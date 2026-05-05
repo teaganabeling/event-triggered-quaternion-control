@@ -282,7 +282,7 @@ tf = st.sidebar.slider(
 
 # Fixed timestep for web demo performance.
 # Use dt = 0.001 locally for higher-resolution research figures.
-dt = 0.005
+dt = 0.001
 
 st.sidebar.header("Controller Gains")
 
