@@ -1,38 +1,558 @@
 # app.py
+# Streamlit webapp for the event-triggered quaternion attitude-control simulation
 
-import streamlit as st
 import numpy as np
+import streamlit as st
+import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
 
-from simulator import run_hybrid_simulation, run_continuous_simulation
+from config import SimulationConfig
+from simulation.continuous_sim import run_continuous_sim
+from simulation.hybrid_sim import run_hybrid_sim
+from web_animation import make_dashboard_animation_html
+
+
+# ============================================================
+# Page setup
+# ============================================================
+
+st.set_page_config(
+    page_title="Event-Triggered Quaternion Attitude Control",
+    layout="wide",
+)
+
+
+# ============================================================
+# Helper functions
+# ============================================================
+
+def axis_angle_to_quaternion(axis: str, angle_deg: float) -> np.ndarray:
+    """
+    Convert an axis-angle initial attitude into a scalar-first unit quaternion.
+
+    Quaternion convention:
+        q = [q0, q1, q2, q3]
+
+    where q0 is the scalar part.
+    """
+    theta = np.deg2rad(angle_deg)
+
+    if axis == "x":
+        a = np.array([1.0, 0.0, 0.0])
+    elif axis == "y":
+        a = np.array([0.0, 1.0, 0.0])
+    elif axis == "z":
+        a = np.array([0.0, 0.0, 1.0])
+    elif axis == "diagonal":
+        a = np.array([1.0, 1.0, 1.0])
+        a = a / np.linalg.norm(a)
+    else:
+        raise ValueError(f"Unknown axis option: {axis}")
+
+    q0 = np.cos(theta / 2.0)
+    q_vec = np.sin(theta / 2.0) * a
+
+    q = np.concatenate(([q0], q_vec))
+    return q / np.linalg.norm(q)
+
+
+def summarize_results(continuous: dict, hybrid: dict) -> dict:
+    """
+    Compute summary metrics for the webapp.
+    """
+    continuous_steps = len(continuous["t"])
+
+    # Your hybrid sim currently counts t=0 as an event/control update.
+    hybrid_updates_including_initial = int(hybrid["num_events"])
+    hybrid_triggered_updates_after_t0 = max(hybrid_updates_including_initial - 1, 0)
+
+    update_reduction = 100.0 * (
+        1.0 - hybrid_updates_including_initial / max(continuous_steps, 1)
+    )
+
+    inter_event_times = hybrid.get("inter_event_times", np.array([]))
+
+    if len(inter_event_times) > 0:
+        mean_inter_event = float(np.mean(inter_event_times))
+        min_inter_event = float(np.min(inter_event_times))
+        max_inter_event = float(np.max(inter_event_times))
+    else:
+        mean_inter_event = float("nan")
+        min_inter_event = float("nan")
+        max_inter_event = float("nan")
+
+    return {
+        "continuous_steps": continuous_steps,
+        "hybrid_updates_including_initial": hybrid_updates_including_initial,
+        "hybrid_triggered_updates_after_t0": hybrid_triggered_updates_after_t0,
+        "update_reduction_percent": update_reduction,
+        "final_continuous_error": float(continuous["e_norm"][-1]),
+        "final_hybrid_error": float(hybrid["e_norm"][-1]),
+        "final_continuous_omega": float(continuous["omega_norm"][-1]),
+        "final_hybrid_omega": float(hybrid["omega_norm"][-1]),
+        "mean_inter_event_time": mean_inter_event,
+        "min_inter_event_time": min_inter_event,
+        "max_inter_event_time": max_inter_event,
+    }
+
+
+@st.cache_data(show_spinner=False)
+def run_cached_simulation(
+    q_0_tuple,
+    omega_0_tuple,
+    tf,
+    dt,
+    k_R,
+    k_omega,
+    sigma_e_gain,
+    sigma_w_gain,
+    sigma_floor,
+    tau_min,
+):
+    """
+    Cached simulation wrapper.
+
+    Streamlit caching works best when arguments are simple/hashable.
+    So we pass tuples and floats, then rebuild SimulationConfig inside.
+    """
+    cfg = SimulationConfig(
+        q_0=np.array(q_0_tuple, dtype=float),
+        omega_0=np.array(omega_0_tuple, dtype=float),
+        tf=float(tf),
+        dt=float(dt),
+        K_R=np.diag([k_R, k_R, k_R]),
+        K_omega=np.diag([k_omega, k_omega, k_omega]),
+        sigma_e_gain=float(sigma_e_gain),
+        sigma_w_gain=float(sigma_w_gain),
+        sigma_floor=float(sigma_floor),
+        tau_min=float(tau_min),
+    )
+
+    continuous = run_continuous_sim(cfg)
+    hybrid = run_hybrid_sim(cfg)
+    summary = summarize_results(continuous, hybrid)
+
+    return continuous, hybrid, summary
+
+
+# ============================================================
+# Plotting functions
+# ============================================================
+
+def plot_error_comparison(continuous: dict, hybrid: dict):
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    ax.plot(continuous["t"], continuous["e_norm"], label="Continuous PD")
+    ax.plot(hybrid["t"], hybrid["e_norm"], label="Event-triggered")
+
+    for tk in hybrid["event_times"]:
+        ax.axvline(tk, alpha=0.12, linewidth=0.8)
+
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel(r"$\|e_R(t)\|$")
+    ax.set_title("Attitude Error Norm")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    return fig
+
+
+def plot_omega_comparison(continuous: dict, hybrid: dict):
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    ax.plot(continuous["t"], continuous["omega_norm"], label="Continuous PD")
+    ax.plot(hybrid["t"], hybrid["omega_norm"], label="Event-triggered")
+
+    for tk in hybrid["event_times"]:
+        ax.axvline(tk, alpha=0.12, linewidth=0.8)
+
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel(r"$\|\omega(t)\|$")
+    ax.set_title("Angular Velocity Norm")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    return fig
+
+
+def plot_control(hybrid: dict):
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    t = hybrid["t"]
+    u = hybrid["u"]
+
+    ax.step(t, u[:, 0], where="post", label=r"$u_1$")
+    ax.step(t, u[:, 1], where="post", label=r"$u_2$")
+    ax.step(t, u[:, 2], where="post", label=r"$u_3$")
+
+    for tk in hybrid["event_times"]:
+        ax.axvline(tk, alpha=0.10, linewidth=0.8)
+
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Held control torque")
+    ax.set_title("Zero-Order Hold Control Input")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    return fig
+
+
+def plot_trigger_terms(hybrid: dict):
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    t = hybrid["t"]
+
+    ax.plot(t, hybrid["mismatch"], label=r"$\|u_c(q,\omega)-u\|$")
+    ax.plot(t, hybrid["sigma"], label=r"$\sigma(\|e_R\|,\|\omega\|)$")
+
+    for tk in hybrid["event_times"]:
+        ax.axvline(tk, alpha=0.10, linewidth=0.8)
+
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Trigger terms")
+    ax.set_title("Trigger Condition")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    return fig
+
+
+def plot_inter_event_histogram(hybrid: dict):
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    inter_event_times = hybrid["inter_event_times"]
+
+    if len(inter_event_times) > 0:
+        bins = min(20, max(5, len(inter_event_times) // 3))
+        ax.hist(inter_event_times, bins=bins)
+        ax.set_xlabel("Inter-event time [s]")
+        ax.set_ylabel("Count")
+        ax.set_title("Inter-Event Time Distribution")
+    else:
+        ax.text(
+            0.5,
+            0.5,
+            "No triggered events after t = 0",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
+        ax.set_title("Inter-Event Time Distribution")
+
+    ax.grid(True, alpha=0.3)
+
+    return fig
+
+
+# ============================================================
+# Sidebar inputs
+# ============================================================
+
+st.sidebar.title("Simulation Controls")
+
+st.sidebar.header("Initial Condition")
+
+angle_deg = st.sidebar.slider(
+    "Initial attitude error angle [deg]",
+    min_value=0,
+    max_value=180,
+    value=45,
+    step=5,
+)
+
+axis = st.sidebar.selectbox(
+    "Initial rotation axis",
+    options=["x", "y", "z", "diagonal"],
+    index=0,
+)
+
+omega_x = st.sidebar.slider("Initial ωx [rad/s]", -2.0, 2.0, 0.30, 0.05)
+omega_y = st.sidebar.slider("Initial ωy [rad/s]", -2.0, 2.0, -0.20, 0.05)
+omega_z = st.sidebar.slider("Initial ωz [rad/s]", -2.0, 2.0, 0.15, 0.05)
+
+st.sidebar.header("Simulation Settings")
+
+tf = st.sidebar.slider(
+    "Final time tf [s]",
+    min_value=2.0,
+    max_value=30.0,
+    value=20.0,
+    step=1.0,
+)
+
+dt = st.sidebar.selectbox(
+    "Time step dt [s]",
+    options=[0.005, 0.002, 0.001],
+    index=2,
+    help="Smaller dt is more accurate but slower.",
+)
+
+st.sidebar.header("Controller Gains")
+
+k_R = st.sidebar.slider(
+    "Attitude gain KR",
+    min_value=0.5,
+    max_value=10.0,
+    value=4.0,
+    step=0.5,
+)
+
+k_omega = st.sidebar.slider(
+    "Angular velocity gain Kω",
+    min_value=0.5,
+    max_value=8.0,
+    value=2.0,
+    step=0.5,
+)
+
+st.sidebar.header("Trigger Parameters")
+
+sigma_e_gain = st.sidebar.slider(
+    "σ error gain",
+    min_value=0.05,
+    max_value=2.0,
+    value=0.50,
+    step=0.05,
+)
+
+sigma_w_gain = st.sidebar.slider(
+    "σ angular velocity gain",
+    min_value=0.00,
+    max_value=1.0,
+    value=0.10,
+    step=0.05,
+)
+
+sigma_floor = st.sidebar.selectbox(
+    "σ floor",
+    options=[1e-4, 1e-3, 1e-2],
+    index=1,
+)
+
+tau_min = st.sidebar.slider(
+    "Minimum inter-event time τmin [s]",
+    min_value=0.0,
+    max_value=0.20,
+    value=0.05,
+    step=0.01,
+)
+
+
+# ============================================================
+# Main app
+# ============================================================
 
 st.title("Event-Triggered Quaternion Attitude Control Simulator")
 
-angle_deg = st.slider("Initial attitude error angle", 0, 180, 45)
-axis = st.selectbox("Rotation axis", ["x", "y", "z"])
-omega_x = st.slider("Initial ωx", -2.0, 2.0, 0.3)
-omega_y = st.slider("Initial ωy", -2.0, 2.0, -0.2)
-omega_z = st.slider("Initial ωz", -2.0, 2.0, 0.15)
+st.markdown(
+    """
+This interactive demo compares two executions of the same quaternion PD attitude controller:
 
-T = st.slider("Simulation time", 1.0, 30.0, 20.0)
-trigger_gain = st.slider("Trigger sensitivity", 0.05, 1.0, 0.5)
+1. **Continuous execution:** the control torque is recomputed at every timestep.  
+2. **Event-triggered execution:** the control torque is updated only when the trigger condition is met, then held constant using zero-order hold.
 
-if st.button("Run Simulation"):
-    results = run_hybrid_simulation(
-        angle_deg=angle_deg,
-        axis=axis,
-        omega0=np.array([omega_x, omega_y, omega_z]),
-        T=T,
-        trigger_gain=trigger_gain,
+The event-triggered system produces hybrid flow-event dynamics: the physical state flows continuously, while the held control input jumps at event times.
+"""
+)
+
+q_0 = axis_angle_to_quaternion(axis, angle_deg)
+omega_0 = np.array([omega_x, omega_y, omega_z], dtype=float)
+
+q_0_tuple = tuple(float(v) for v in q_0)
+omega_0_tuple = tuple(float(v) for v in omega_0)
+
+with st.spinner("Running simulation..."):
+    continuous, hybrid, summary = run_cached_simulation(
+        q_0_tuple=q_0_tuple,
+        omega_0_tuple=omega_0_tuple,
+        tf=float(tf),
+        dt=float(dt),
+        k_R=float(k_R),
+        k_omega=float(k_omega),
+        sigma_e_gain=float(sigma_e_gain),
+        sigma_w_gain=float(sigma_w_gain),
+        sigma_floor=float(sigma_floor),
+        tau_min=float(tau_min),
     )
 
-    st.write(f"Number of events: {results['num_events']}")
-    st.write(f"Final attitude error: {results['final_error']:.3e}")
 
-    fig, ax = plt.subplots()
-    ax.plot(results["t"], results["eR_norm"])
-    for tk in results["event_times"]:
-        ax.axvline(tk, alpha=0.15)
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel(r"$\|e_R(t)\|$")
-    st.pyplot(fig)
+# ============================================================
+# Summary metrics
+# ============================================================
+
+st.subheader("Summary")
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric(
+    "Triggered updates after t=0",
+    summary["hybrid_triggered_updates_after_t0"],
+)
+
+col2.metric(
+    "Update reduction",
+    f"{summary['update_reduction_percent']:.2f}%",
+)
+
+col3.metric(
+    "Final hybrid attitude error",
+    f"{summary['final_hybrid_error']:.2e}",
+)
+
+col4.metric(
+    "Final hybrid angular velocity",
+    f"{summary['final_hybrid_omega']:.2e}",
+)
+
+with st.expander("Detailed numerical summary"):
+    st.write(
+        {
+            "continuous_steps": summary["continuous_steps"],
+            "hybrid_updates_including_initial": summary["hybrid_updates_including_initial"],
+            "hybrid_triggered_updates_after_t0": summary["hybrid_triggered_updates_after_t0"],
+            "mean_inter_event_time": summary["mean_inter_event_time"],
+            "min_inter_event_time": summary["min_inter_event_time"],
+            "max_inter_event_time": summary["max_inter_event_time"],
+            "final_continuous_error": summary["final_continuous_error"],
+            "final_hybrid_error": summary["final_hybrid_error"],
+            "final_continuous_omega": summary["final_continuous_omega"],
+            "final_hybrid_omega": summary["final_hybrid_omega"],
+        }
+    )
+
+with st.expander("Current initial condition"):
+    st.write(
+        {
+            "q_0": q_0.tolist(),
+            "omega_0": omega_0.tolist(),
+            "axis": axis,
+            "angle_deg": angle_deg,
+        }
+    )
+
+
+# ============================================================
+# Static plots
+# ============================================================
+
+st.subheader("Static Simulation Plots")
+
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    [
+        "Attitude Error",
+        "Angular Velocity",
+        "Control Input",
+        "Trigger Condition",
+        "Inter-Event Times",
+    ]
+)
+
+with tab1:
+    st.pyplot(plot_error_comparison(continuous, hybrid), clear_figure=True)
+
+with tab2:
+    st.pyplot(plot_omega_comparison(continuous, hybrid), clear_figure=True)
+
+with tab3:
+    st.pyplot(plot_control(hybrid), clear_figure=True)
+
+with tab4:
+    st.pyplot(plot_trigger_terms(hybrid), clear_figure=True)
+
+with tab5:
+    st.pyplot(plot_inter_event_histogram(hybrid), clear_figure=True)
+
+
+# ============================================================
+# Animated dashboard
+# ============================================================
+
+st.subheader("Animated Flow–Event Dashboard")
+
+st.markdown(
+    """
+The dashboard animates the continuous and event-triggered executions side by side.
+
+- The **upper cube** shows continuous PD execution.
+- The **lower cube** shows hybrid event-triggered execution.
+- The hybrid cube flashes near event times.
+- The plots show attitude error, angular velocity, trigger terms, and zero-order hold control input.
+"""
+)
+
+# Fixed animation settings for a reliable poster/web demo.
+# Higher stride = fewer frames = faster loading and smaller embedded animation.
+ANIMATION_STRIDE = 150
+ANIMATION_INTERVAL = 200
+
+animation_height = st.slider(
+    "Animation display height [px]",
+    min_value=500,
+    max_value=1200,
+    value=850,
+    step=50,
+    help="Adjust this if the animation is too tall or too short for your screen.",
+)
+
+if st.button("Generate animated dashboard", type="primary"):
+    with st.spinner("Generating animation... this may take a few seconds."):
+        animation_html = make_dashboard_animation_html(
+            continuous=continuous,
+            hybrid=hybrid,
+            stride=ANIMATION_STRIDE,
+            cube_size=0.8,
+            interval=ANIMATION_INTERVAL,
+        )
+
+    responsive_animation_html = f"""
+    <div style="
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+    ">
+        <div style="
+            width: 100%;
+            min-width: 700px;
+        ">
+            {animation_html}
+        </div>
+    </div>
+
+    <style>
+        img {{
+            max-width: 100% !important;
+            height: auto !important;
+        }}
+
+        video {{
+            max-width: 100% !important;
+            height: auto !important;
+        }}
+
+        canvas {{
+            max-width: 100% !important;
+            height: auto !important;
+        }}
+
+        svg {{
+            max-width: 100% !important;
+            height: auto !important;
+        }}
+
+        .animation {{
+            width: 100% !important;
+            height: auto !important;
+        }}
+    </style>
+    """
+
+    components.html(
+        responsive_animation_html,
+        height=int(animation_height),
+        scrolling=True,
+    )
+
+st.caption(
+    "Inputs are constrained to keep the simulation physically meaningful and robust during a poster session."
+)
