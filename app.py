@@ -266,9 +266,9 @@ axis = st.sidebar.selectbox(
     index=0,
 )
 
-omega_x = st.sidebar.slider("Initial ωx [rad/s]", -2.0, 2.0, 0.30, 0.05)
-omega_y = st.sidebar.slider("Initial ωy [rad/s]", -2.0, 2.0, -0.20, 0.05)
-omega_z = st.sidebar.slider("Initial ωz [rad/s]", -2.0, 2.0, 0.15, 0.05)
+omega_x = st.sidebar.slider("Initial ω_x [rad/s]", -2.0, 2.0, 0.30, 0.05)
+omega_y = st.sidebar.slider("Initial ω_y [rad/s]", -2.0, 2.0, -0.20, 0.05)
+omega_z = st.sidebar.slider("Initial ω_z [rad/s]", -2.0, 2.0, 0.15, 0.05)
 
 st.sidebar.header("Simulation Settings")
 
@@ -284,6 +284,17 @@ tf = st.sidebar.slider(
 # Use dt = 0.001 locally for higher-resolution research figures.
 dt = 0.005
 
+# Fixed controller gains for public demo
+k_R = 4.0
+k_omega = 2.0
+
+# Fixed trigger parameters for public demo
+sigma_e_gain = 0.50
+sigma_w_gain = 0.10
+sigma_floor = 1e-3
+tau_min = 0.05
+
+"""
 st.sidebar.header("Controller Gains")
 
 k_R = st.sidebar.slider(
@@ -334,6 +345,7 @@ tau_min = st.sidebar.slider(
     step=0.01,
 )
 
+"""
 
 # ============================================================
 # Main app
