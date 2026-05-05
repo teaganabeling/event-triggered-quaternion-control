@@ -280,12 +280,9 @@ tf = st.sidebar.slider(
     step=1.0,
 )
 
-dt = st.sidebar.selectbox(
-    "Time step dt [s]",
-    options=[0.01, 0.005, 0.002, 0.001],
-    index=1,
-    help="Smaller dt is more accurate but slower.",
-)
+# Fixed timestep for web demo performance.
+# Use dt = 0.001 locally for higher-resolution research figures.
+dt = 0.005
 
 st.sidebar.header("Controller Gains")
 
