@@ -1,0 +1,24 @@
+
+NOTES
+________________
+
+How to use config:
+    from config import SimulationConfig, initial_state, unpack_state
+
+    cfg = SimulationConfig()
+    x0 = initial_state(cfg)
+
+    q, omega, u = unpack_state(x0)
+
+    print("Initial state:", x0)
+    print("Initial quaternion:", q)
+    print("Initial angular velocity:", omega)
+    print("Initial control:", u)
+
+________________
+
+How to activate/deactivate venv:
+    source .venv/bin/activate
+    deactivate
+
+________________
