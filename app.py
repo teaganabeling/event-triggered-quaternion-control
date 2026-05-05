@@ -294,58 +294,6 @@ sigma_w_gain = 0.10
 sigma_floor = 1e-3
 tau_min = 0.05
 
-"""
-st.sidebar.header("Controller Gains")
-
-k_R = st.sidebar.slider(
-    "Attitude gain KR",
-    min_value=0.5,
-    max_value=10.0,
-    value=4.0,
-    step=0.5,
-)
-
-k_omega = st.sidebar.slider(
-    "Angular velocity gain Kω",
-    min_value=0.5,
-    max_value=8.0,
-    value=2.0,
-    step=0.5,
-)
-
-st.sidebar.header("Trigger Parameters")
-
-sigma_e_gain = st.sidebar.slider(
-    "σ error gain",
-    min_value=0.05,
-    max_value=2.0,
-    value=0.50,
-    step=0.05,
-)
-
-sigma_w_gain = st.sidebar.slider(
-    "σ angular velocity gain",
-    min_value=0.00,
-    max_value=1.0,
-    value=0.10,
-    step=0.05,
-)
-
-sigma_floor = st.sidebar.selectbox(
-    "σ floor",
-    options=[1e-4, 1e-3, 1e-2],
-    index=1,
-)
-
-tau_min = st.sidebar.slider(
-    "Minimum inter-event time τmin [s]",
-    min_value=0.0,
-    max_value=0.20,
-    value=0.05,
-    step=0.01,
-)
-
-"""
 
 # ============================================================
 # Main app
