@@ -490,7 +490,7 @@ The dashboard animates the continuous and event-triggered executions side by sid
 # Fixed animation settings for a reliable poster/web demo.
 # Higher stride = fewer frames = faster loading and smaller embedded animation.
 ANIMATION_STRIDE = 150
-ANIMATION_INTERVAL = 200
+ANIMATION_INTERVAL = 100
 
 animation_height = st.slider(
     "Animation display height [px]",
