@@ -150,7 +150,7 @@ def draw_cube_panel(
 def animate_dashboard(
     continuous: dict,
     hybrid: dict,
-    stride: int = 250,
+    stride: int = 100,
     cube_size: float = 0.8,
 ):
     """
