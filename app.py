@@ -282,7 +282,7 @@ tf = st.sidebar.slider(
 
 # Fixed timestep for web demo performance.
 # Use dt = 0.001 locally for higher-resolution research figures.
-dt = 0.005
+dt = 0.001
 
 st.sidebar.header("Controller Gains")
 
@@ -445,19 +445,29 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 )
 
 with tab1:
-    st.pyplot(plot_error_comparison(continuous, hybrid), clear_figure=True)
+    fig = plot_error_comparison(continuous, hybrid)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 with tab2:
-    st.pyplot(plot_omega_comparison(continuous, hybrid), clear_figure=True)
+    fig = plot_omega_comparison(continuous, hybrid)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 with tab3:
-    st.pyplot(plot_control(hybrid), clear_figure=True)
+    fig = plot_control(hybrid)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 with tab4:
-    st.pyplot(plot_trigger_terms(hybrid), clear_figure=True)
+    fig = plot_trigger_terms(hybrid)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 with tab5:
-    st.pyplot(plot_inter_event_histogram(hybrid), clear_figure=True)
+    fig = plot_inter_event_histogram(hybrid)
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 
 # ============================================================
