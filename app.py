@@ -275,15 +275,15 @@ st.sidebar.header("Simulation Settings")
 tf = st.sidebar.slider(
     "Final time tf [s]",
     min_value=2.0,
-    max_value=30.0,
-    value=20.0,
+    max_value=20.0,
+    value=10.0,
     step=1.0,
 )
 
 dt = st.sidebar.selectbox(
     "Time step dt [s]",
-    options=[0.005, 0.002, 0.001],
-    index=2,
+    options=[0.01, 0.005, 0.002, 0.001],
+    index=1,
     help="Smaller dt is more accurate but slower.",
 )
 
