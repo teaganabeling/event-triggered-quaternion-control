@@ -482,7 +482,11 @@ if st.button("Generate animated dashboard", type="primary"):
 
 st.markdown(
     """
-The attitude error plot shows how quickly the system approaches the desired orientation. The angular velocity plot shows whether the body rates are being damped toward zero. The control input plot shows the held zero-order-hold torque used by the event-triggered controller, where flat regions indicate that the control input is not being recomputed. The trigger-condition plot compares the control mismatch with the triggering threshold; when the mismatch reaches the threshold, a new event updates the control input. Together, these graphs show whether the event-triggered controller stabilizes the attitude while using fewer control updates than continuous execution.
+The attitude error plot shows how quickly the system approaches the desired orientation. 
+The angular velocity plot shows whether the maginutde of the angular is being damped towards 0. 
+The control input plot shows the torque held under a ZOH used by our event-triggered controller, where flat regions indicate that the control input isn't being recomputed. 
+The trigger-condition plot compares the control mismatch with the triggering threshold; when the mismatch reaches the threshold, a new event updates the control input. 
+Altogether, these graphs show whether the event-triggered controller stabilizes the attitude while using fewer control updates than continuous execution.
 """
 )
 
