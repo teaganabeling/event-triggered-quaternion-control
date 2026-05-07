@@ -246,13 +246,85 @@ st.sidebar.header("Initial Condition")
 
 st.sidebar.markdown("Initial quaternion orientation:")
 
-q0_raw = st.sidebar.slider("q0 scalar", -1.0, 1.0, 0.9239, 0.01)
-q1_raw = st.sidebar.slider("q1 x", -1.0, 1.0, 0.3827, 0.01)
-q2_raw = st.sidebar.slider("q2 y", -1.0, 1.0, 0.0, 0.01)
-q3_raw = st.sidebar.slider("q3 z", -1.0, 1.0, 0.0, 0.01)
+def normalize_quaternion_state(changed_key: str):
+    q = np.array(
+        [
+            st.session_state.q0_raw,
+            st.session_state.q1_raw,
+            st.session_state.q2_raw,
+            st.session_state.q3_raw,
+        ],
+        dtype=float,
+    )
 
-q_raw = np.array([q0_raw, q1_raw, q2_raw, q3_raw], dtype=float)
-q_0 = normalize_quaternion(q_raw)
+    norm_q = np.linalg.norm(q)
+
+    if norm_q < 1e-8:
+        q = np.array([1.0, 0.0, 0.0, 0.0])
+    else:
+        q = q / norm_q
+
+    if q[0] < 0:
+        q = -q
+
+    st.session_state.q0_raw = float(q[0])
+    st.session_state.q1_raw = float(q[1])
+    st.session_state.q2_raw = float(q[2])
+    st.session_state.q3_raw = float(q[3])
+
+if "q0_raw" not in st.session_state:
+    st.session_state.q0_raw = 0.9239
+if "q1_raw" not in st.session_state:
+    st.session_state.q1_raw = 0.3827
+if "q2_raw" not in st.session_state:
+    st.session_state.q2_raw = 0.0
+if "q3_raw" not in st.session_state:
+    st.session_state.q3_raw = 0.0
+
+st.sidebar.markdown("Initial quaternion orientation:")
+
+q0_raw = st.sidebar.slider(
+    "q0 scalar",
+    -1.0,
+    1.0,
+    key="q0_raw",
+    step=0.01,
+    on_change=normalize_quaternion_state,
+    args=("q0_raw",),
+)
+
+q1_raw = st.sidebar.slider(
+    "q1 x",
+    -1.0,
+    1.0,
+    key="q1_raw",
+    step=0.01,
+    on_change=normalize_quaternion_state,
+    args=("q1_raw",),
+)
+
+q2_raw = st.sidebar.slider(
+    "q2 y",
+    -1.0,
+    1.0,
+    key="q2_raw",
+    step=0.01,
+    on_change=normalize_quaternion_state,
+    args=("q2_raw",),
+)
+
+q3_raw = st.sidebar.slider(
+    "q3 z",
+    -1.0,
+    1.0,
+    key="q3_raw",
+    step=0.01,
+    on_change=normalize_quaternion_state,
+    args=("q3_raw",),
+)
+
+q_0 = np.array([q0_raw, q1_raw, q2_raw, q3_raw], dtype=float)
+q_0 = normalize_quaternion(q_0)
 
 omega_x = st.sidebar.slider("Initial ω_x [rad/s]", -2.0, 2.0, 0.30, 0.05)
 omega_y = st.sidebar.slider("Initial ω_y [rad/s]", -2.0, 2.0, -0.20, 0.05)
