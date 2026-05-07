@@ -245,10 +245,10 @@ st.sidebar.title("Simulation Controls")
 st.sidebar.header("Initial Condition")
 
 st.sidebar.markdown("Initial quaternion orientation:")
-q0_raw = st.sidebar.slider("q0 scalar", -1.0, 1.0, 0.9239, 0.01)
-q1_raw = st.sidebar.slider("q1 x", -1.0, 1.0, 0.3827, 0.01)
-q2_raw = st.sidebar.slider("q2 y", -1.0, 1.0, 0.0, 0.01)
-q3_raw = st.sidebar.slider("q3 z", -1.0, 1.0, 0.0, 0.01)
+q0_raw = st.sidebar.slider("q0 (w, the scalar component)", -1.0, 1.0, 0.9239, 0.01)
+q1_raw = st.sidebar.slider("q1 (x)", -1.0, 1.0, 0.3827, 0.01)
+q2_raw = st.sidebar.slider("q2 (y)", -1.0, 1.0, 0.0, 0.01)
+q3_raw = st.sidebar.slider("q3 (z)", -1.0, 1.0, 0.0, 0.01)
 
 q_raw = np.array([q0_raw, q1_raw, q2_raw, q3_raw], dtype=float)
 q_0 = normalize_quaternion(q_raw)
@@ -266,14 +266,14 @@ st.sidebar.code(
     language="text",
 )
 
-omega_x = st.sidebar.slider("Initial ω_x [rad/s]", -2.0, 2.0, 0.30, 0.05)
-omega_y = st.sidebar.slider("Initial ω_y [rad/s]", -2.0, 2.0, -0.20, 0.05)
-omega_z = st.sidebar.slider("Initial ω_z [rad/s]", -2.0, 2.0, 0.15, 0.05)
+omega_x = st.sidebar.slider("Initial ω_x (rad/s)", -2.0, 2.0, 0.30, 0.05)
+omega_y = st.sidebar.slider("Initial ω_y (rad/s)", -2.0, 2.0, -0.20, 0.05)
+omega_z = st.sidebar.slider("Initial ω_z (rad/s)", -2.0, 2.0, 0.15, 0.05)
 
 st.sidebar.header("Simulation Settings")
 
 tf = st.sidebar.slider(
-    "Final time tf [s]",
+    "Final time t_f [s]",
     min_value=2.0,
     max_value=20.0,
     value=10.0,
