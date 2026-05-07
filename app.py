@@ -254,8 +254,15 @@ q_raw = np.array([q0_raw, q1_raw, q2_raw, q3_raw], dtype=float)
 q_0 = normalize_quaternion(q_raw)
 
 st.sidebar.markdown("Normalized quaternion:")
+formatted_q = (
+    f"[{q_0[0]:.4f}  "
+    f"{q_0[1]:.4f}  "
+    f"{q_0[2]:.4f}  "
+    f"{q_0[3]:.4f}]"
+)
+
 st.sidebar.code(
-    np.array2string(q_0, precision=4),
+    formatted_q,
     language="text",
 )
 
@@ -397,7 +404,7 @@ The dashboard animates the continuous and event-triggered executions side by sid
 
 # Fixed animation settings for a reliable poster/web demo.
 # Higher stride = fewer frames = faster loading and smaller embedded animation.
-ANIMATION_STRIDE = 100
+ANIMATION_STRIDE = 80
 ANIMATION_INTERVAL = 200
 
 animation_height = st.slider(
