@@ -303,7 +303,7 @@ st.title("Event-Triggered Quaternion Attitude Control Simulator")
 
 st.markdown(
     """
-This interactive demo compares two executions of the same quaternion PD attitude controller:
+This demo compares two executions of the same quaternion PD attitude controller:
 
 1. **Continuous execution:** the control torque is recomputed at every timestep.  
 2. **Event-triggered execution:** the control torque is updated only when the trigger condition is met, then held constant using zero-order hold.
