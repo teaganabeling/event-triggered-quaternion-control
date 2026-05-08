@@ -245,10 +245,10 @@ st.sidebar.title("Simulation Controls")
 st.sidebar.header("Initial Condition")
 
 st.sidebar.markdown("Initial quaternion orientation:")
-q0_raw = st.sidebar.slider("q0 (w, the scalar component)", -1.0, 1.0, 0.9239, 0.01)
-q1_raw = st.sidebar.slider("q1 (x)", -1.0, 1.0, 0.3827, 0.01)
-q2_raw = st.sidebar.slider("q2 (y)", -1.0, 1.0, 0.0, 0.01)
-q3_raw = st.sidebar.slider("q3 (z)", -1.0, 1.0, 0.0, 0.01)
+q0_raw = st.sidebar.slider("q_0 (w, the scalar component)", -1.0, 1.0, 0.9239, 0.01)
+q1_raw = st.sidebar.slider("q_1 (x)", -1.0, 1.0, 0.3827, 0.01)
+q2_raw = st.sidebar.slider("q_2 (y)", -1.0, 1.0, 0.0, 0.01)
+q3_raw = st.sidebar.slider("q_3 (z)", -1.0, 1.0, 0.0, 0.01)
 
 q_raw = np.array([q0_raw, q1_raw, q2_raw, q3_raw], dtype=float)
 q_0 = normalize_quaternion(q_raw)
@@ -258,7 +258,7 @@ formatted_q = (
     f"[{q_0[0]:.4f}  "
     f"{q_0[1]:.4f}  "
     f"{q_0[2]:.4f}  "
-    f"{q_0[3]:.4f}]"
+    f"{q_0[3]:.4f}]  "
 )
 
 st.sidebar.code(
