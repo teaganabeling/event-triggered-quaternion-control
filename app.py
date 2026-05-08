@@ -417,7 +417,7 @@ animation_height = st.slider(
 )
 
 if st.button("Generate animated dashboard", type="primary"):
-    with st.spinner("Generating animation... this may take a few seconds."):
+    with st.spinner("Generating animation... this may take a few seconds!"):
         animation_html = make_dashboard_animation_html(
             continuous=continuous,
             hybrid=hybrid,
